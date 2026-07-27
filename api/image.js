@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -9,37 +8,35 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
     const { prompt } = req.body;
 
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.HF_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-        }),
-      }
-    );
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required." });
+    }
+
+    const imageUrl =
+      `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
+
+    const response = await fetch(imageUrl);
 
     if (!response.ok) {
-      const error = await response.text();
-      return res.status(response.status).json({ error });
+      return res.status(500).json({
+        error: "Failed to generate image."
+      });
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
 
-    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Type", response.headers.get("content-type") || "image/png");
     return res.status(200).send(buffer);
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: err.message
+    });
   }
 }
